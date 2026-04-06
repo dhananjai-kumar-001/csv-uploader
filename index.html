@@ -14,6 +14,9 @@
       font-size: 14px;
       cursor: pointer;
     }
+    #status {
+      margin-top: 16px;
+    }
   </style>
 </head>
 <body>
@@ -28,7 +31,7 @@
 
   <script>
     async function getUploadUrl() {
-      const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRV26_s7Hhmks0YNFaDptdjo5z3i6rP6XZ1-VAG2rMydO9vpxdCllHJcB98mEPXIPstvwVOjWhJwzvG/pubhtml?gid=0&single=true";
+      const csvUrl = "PASTE_YOUR_PUBLISHED_CSV_LINK";
       const response = await fetch(csvUrl);
       const text = await response.text();
 
@@ -37,10 +40,10 @@
     }
 
     async function uploadFile() {
-      const file = document.getElementById("fileInput").files[0];
+      const fileInput = document.getElementById("fileInput");
       const status = document.getElementById("status");
 
-      if (!file) {
+      if (!fileInput.files.length) {
         status.innerText = "Please select a CSV file.";
         return;
       }
@@ -51,21 +54,26 @@
 
       status.innerText = "Uploading...";
 
-      try {
-        const response = await fetch(uploadUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "text/csv"
-          },
-          body: file
-        });
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = uploadUrl;
+      form.enctype = "multipart/form-data";
 
-        status.innerText = response.ok
-          ? "Upload successful. Processing will start in next cron run."
-          : "Upload failed. Status: " + response.status;
-      } catch (err) {
-        status.innerText = "Upload failed: " + err.message;
-      }
+      const fileField = document.createElement("input");
+      fileField.type = "file";
+      fileField.name = "file";
+
+      const dt = new DataTransfer();
+      dt.items.add(fileInput.files[0]);
+      fileField.files = dt.files;
+
+      form.appendChild(fileField);
+      document.body.appendChild(form);
+
+      form.submit();
+
+      status.innerText =
+        "Upload submitted. Processing will start in next cron run.";
     }
   </script>
 </body>
