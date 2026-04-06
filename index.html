@@ -31,7 +31,7 @@
 
   <script>
     async function getPostData() {
-      const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRV26_s7Hhmks0YNFaDptdjo5z3i6rP6XZ1-VAG2rMydO9vpxdCllHJcB98mEPXIPstvwVOjWhJwzvG/pubhtml";
+      const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRV26_s7Hhmks0YNFaDptdjo5z3i6rP6XZ1-VAG2rMydO9vpxdCllHJcB98mEPXIPstvwVOjWhJwzvG/pub?output=csv";
       const response = await fetch(csvUrl);
       const text = await response.text();
 
