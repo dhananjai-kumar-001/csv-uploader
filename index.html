@@ -1,86 +1,70 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>CSV Upload Tool</title>
-  <style>
-    body {
-      font-family: Arial;
-      max-width: 500px;
-      margin: 40px auto;
-      padding: 20px;
-    }
-    button {
-      padding: 10px 16px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-  <h2>Upload CSV File</h2>
+<script>
+async function getPostData() {
+  const csvUrl = "PASTE_YOUR_PUBLISHED_CSV_LINK";
+  const response = await fetch(csvUrl);
+  const text = await response.text();
 
-  <input type="file" id="fileInput" accept=".csv" />
-  <br><br>
+  const rows = text.trim().split("\n");
 
-  <button onclick="uploadFile()">Upload & Process</button>
+  // If you have headers in row 1, use row 2
+  const row = rows.length > 1 ? rows[1] : rows[0];
 
-  <p id="status"></p>
+  // Split into 2 columns only
+  const parts = row.split(/,(.+)/);
 
-  <script>
-    async function getPostData() {
-      const csvUrl = "PASTE_YOUR_PUBLISHED_CSV_LINK";
-      const response = await fetch(csvUrl);
-      const text = await response.text();
+  const url = parts[0].replace(/^"|"$/g, "").trim();
+  const fieldsJson = parts[1]
+    .replace(/^"|"$/g, "")
+    .replace(/""/g, '"')
+    .trim();
 
-      const rows = text.split("\n");
-      const jsonString = rows[1].replace(/"/g, '""').trim();
+  return {
+    url: url,
+    fields: JSON.parse(fieldsJson)
+  };
+}
 
-      return JSON.parse(jsonString);
-    }
+async function uploadFile() {
+  const fileInput = document.getElementById("fileInput");
+  const status = document.getElementById("status");
 
-    async function uploadFile() {
-      const fileInput = document.getElementById("fileInput");
-      const status = document.getElementById("status");
+  if (!fileInput.files.length) {
+    status.innerText = "Please select a file.";
+    return;
+  }
 
-      if (!fileInput.files.length) {
-        status.innerText = "Please select a file.";
-        return;
-      }
+  status.innerText = "Fetching upload key...";
 
-      status.innerText = "Fetching upload key...";
+  const postData = await getPostData();
 
-      const postData = await getPostData();
+  status.innerText = "Uploading...";
 
-      status.innerText = "Uploading...";
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = postData.url;
+  form.enctype = "multipart/form-data";
 
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = postData.url;
-      form.enctype = "multipart/form-data";
+  // Required S3 fields
+  for (const [key, value] of Object.entries(postData.fields)) {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = key;
+    input.value = value;
+    form.appendChild(input);
+  }
 
-      // Add all S3 required hidden fields
-      for (const [key, value] of Object.entries(postData.fields)) {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = key;
-        input.value = value;
-        form.appendChild(input);
-      }
+  // File field
+  const fileField = document.createElement("input");
+  fileField.type = "file";
+  fileField.name = "file";
 
-      // Add file input
-      const fileField = document.createElement("input");
-      fileField.type = "file";
-      fileField.name = "file";
+  const dt = new DataTransfer();
+  dt.items.add(fileInput.files[0]);
+  fileField.files = dt.files;
 
-      const dt = new DataTransfer();
-      dt.items.add(fileInput.files[0]);
-      fileField.files = dt.files;
+  form.appendChild(fileField);
+  document.body.appendChild(form);
 
-      form.appendChild(fileField);
-      document.body.appendChild(form);
-
-      form.submit();
-    }
-  </script>
-</body>
-</html>
+  form.submit();
+}
+</script>
