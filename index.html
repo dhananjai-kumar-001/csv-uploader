@@ -1,20 +1,105 @@
-<script>
-async function getPostData() {
-  const sheetUrl = "https://docs.google.com/spreadsheets/d/1RgTqORIk9X2pOl6ZD6-1-itbLxZqJUgNWuxzWrqFE3o/gviz/tq?tqx=out:json";
-  const response = await fetch(sheetUrl);
-  const text = await response.text();
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CSV Upload Tool</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 500px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    button {
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    #status {
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Upload CSV File</h2>
 
-  const jsonText = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/s)[1];
-  const data = JSON.parse(jsonText);
+  <input type="file" id="fileInput" accept=".csv" />
+  <br><br>
 
-  const row = data.table.rows[0];
+  <button onclick="uploadFile()">Upload & Process</button>
 
-  const url = row.c[0].v;       // B2
-  const fieldsJson = row.c[1].v; // C2
+  <p id="status"></p>
 
-  return {
-    url: url,
-    fields: JSON.parse(fieldsJson)
-  };
-}
-</script>
+  <script>
+    async function getPostData() {
+      const sheetUrl = "https://docs.google.com/spreadsheets/d/1RgTqORIk9X2pOl6ZD6-1-itbLxZqJUgNWuxzWrqFE3o/gviz/tq?tqx=out:json";
+      const response = await fetch(sheetUrl);
+      const text = await response.text();
+
+      const match = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/s);
+
+      if (!match) {
+        throw new Error("Could not parse Google Sheet response");
+      }
+
+      const data = JSON.parse(match[1]);
+
+      const row = data.table.rows[0];
+
+      const url = row.c[0].v;
+      const fieldsJson = row.c[1].v;
+
+      return {
+        url: url,
+        fields: JSON.parse(fieldsJson)
+      };
+    }
+
+    async function uploadFile() {
+      const fileInput = document.getElementById("fileInput");
+      const status = document.getElementById("status");
+
+      if (!fileInput.files.length) {
+        status.innerText = "Please select a file.";
+        return;
+      }
+
+      try {
+        status.innerText = "Fetching upload key...";
+
+        const postData = await getPostData();
+
+        status.innerText = "Uploading...";
+
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = postData.url;
+        form.enctype = "multipart/form-data";
+
+        for (const key in postData.fields) {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = postData.fields[key];
+          form.appendChild(input);
+        }
+
+        const fileField = document.createElement("input");
+        fileField.type = "file";
+        fileField.name = "file";
+
+        const dt = new DataTransfer();
+        dt.items.add(fileInput.files[0]);
+        fileField.files = dt.files;
+
+        form.appendChild(fileField);
+        document.body.appendChild(form);
+
+        form.submit();
+
+      } catch (err) {
+        status.innerText = "Error: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
