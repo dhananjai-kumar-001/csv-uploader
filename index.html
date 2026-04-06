@@ -1,108 +1,45 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>CSV Upload Tool</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 500px;
-      margin: 40px auto;
-      padding: 20px;
+<script>
+async function getPostData() {
+  const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRV26_s7Hhmks0YNFaDptdjo5z3i6rP6XZ1-VAG2rMydO9vpxdCllHJcB98mEPXIPstvwVOjWhJwzvG/pub?output=csv";
+  const response = await fetch(csvUrl);
+  const text = await response.text();
+
+  const rows = text.trim().split("\n");
+
+  // second row = actual data
+  const row = rows[1];
+
+  // Parse first comma outside quotes
+  let inQuotes = false;
+  let splitIndex = -1;
+
+  for (let i = 0; i < row.length; i++) {
+    const ch = row[i];
+
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+    } else if (ch === "," && !inQuotes) {
+      splitIndex = i;
+      break;
     }
-    button {
-      padding: 10px 16px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    #status {
-      margin-top: 16px;
-    }
-  </style>
-</head>
-<body>
-  <h2>Upload CSV File</h2>
+  }
 
-  <input type="file" id="fileInput" accept=".csv" />
-  <br><br>
+  if (splitIndex === -1) {
+    throw new Error("Could not parse CSV row");
+  }
 
-  <button onclick="uploadFile()">Upload & Process</button>
+  const url = row.slice(0, splitIndex)
+    .replace(/^"|"$/g, "")
+    .trim();
 
-  <p id="status"></p>
+  const fieldsJson = row.slice(splitIndex + 1)
+    .replace(/^"|"$/g, "")
+    .replace(/""/g, '"')
+    .trim();
 
-  <script>
-    async function getPostData() {
-      const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRV26_s7Hhmks0YNFaDptdjo5z3i6rP6XZ1-VAG2rMydO9vpxdCllHJcB98mEPXIPstvwVOjWhJwzvG/pub?output=csv";
-      const response = await fetch(csvUrl);
-      const text = await response.text();
-
-      const rows = text.trim().split("\n");
-
-      // row 0 = headers, row 1 = actual values
-      const row = rows[1];
-
-      // split into 2 parts only
-      const parts = row.split(/,(.+)/);
-
-      const url = parts[0].replace(/^"|"$/g, "").trim();
-
-      const fieldsJson = parts[1]
-        .replace(/^"|"$/g, "")
-        .replace(/""/g, '"')
-        .trim();
-
-      return {
-        url: url,
-        fields: JSON.parse(fieldsJson)
-      };
-    }
-
-    async function uploadFile() {
-      const fileInput = document.getElementById("fileInput");
-      const status = document.getElementById("status");
-
-      if (!fileInput.files.length) {
-        status.innerText = "Please select a file.";
-        return;
-      }
-
-      status.innerText = "Fetching upload key...";
-
-      try {
-        const postData = await getPostData();
-
-        status.innerText = "Uploading...";
-
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = postData.url;
-        form.enctype = "multipart/form-data";
-
-        // Add S3 hidden fields
-        for (const key in postData.fields) {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = key;
-          input.value = postData.fields[key];
-          form.appendChild(input);
-        }
-
-        // Add file field
-        const fileField = document.createElement("input");
-        fileField.type = "file";
-        fileField.name = "file";
-
-        const dt = new DataTransfer();
-        dt.items.add(fileInput.files[0]);
-        fileField.files = dt.files;
-
-        form.appendChild(fileField);
-        document.body.appendChild(form);
-
-        form.submit();
-      } catch (err) {
-        status.innerText = "Error: " + err.message;
-      }
-    }
-  </script>
-</body>
-</html>
+  return {
+    url: url,
+    fields: JSON.parse(fieldsJson)
+  };
+}
+</script>
