@@ -1,41 +1,16 @@
 <script>
 async function getPostData() {
-  const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRV26_s7Hhmks0YNFaDptdjo5z3i6rP6XZ1-VAG2rMydO9vpxdCllHJcB98mEPXIPstvwVOjWhJwzvG/pub?output=csv";
-  const response = await fetch(csvUrl);
+  const sheetUrl = "https://docs.google.com/spreadsheets/d/1RgTqORIk9X2pOl6ZD6-1-itbLxZqJUgNWuxzWrqFE3o/gviz/tq?tqx=out:json";
+  const response = await fetch(sheetUrl);
   const text = await response.text();
 
-  const rows = text.trim().split("\n");
+  const jsonText = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/s)[1];
+  const data = JSON.parse(jsonText);
 
-  // second row = actual data
-  const row = rows[1];
+  const row = data.table.rows[0];
 
-  // Parse first comma outside quotes
-  let inQuotes = false;
-  let splitIndex = -1;
-
-  for (let i = 0; i < row.length; i++) {
-    const ch = row[i];
-
-    if (ch === '"') {
-      inQuotes = !inQuotes;
-    } else if (ch === "," && !inQuotes) {
-      splitIndex = i;
-      break;
-    }
-  }
-
-  if (splitIndex === -1) {
-    throw new Error("Could not parse CSV row");
-  }
-
-  const url = row.slice(0, splitIndex)
-    .replace(/^"|"$/g, "")
-    .trim();
-
-  const fieldsJson = row.slice(splitIndex + 1)
-    .replace(/^"|"$/g, "")
-    .replace(/""/g, '"')
-    .trim();
+  const url = row.c[0].v;       // B2
+  const fieldsJson = row.c[1].v; // C2
 
   return {
     url: url,
