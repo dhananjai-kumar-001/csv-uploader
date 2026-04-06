@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CSV Upload Tool</title>
+  <style>
+    body {
+      font-family: Arial;
+      max-width: 500px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    button {
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2>Upload CSV File</h2>
+
+  <input type="file" id="fileInput" accept=".csv" />
+  <br><br>
+
+  <button onclick="uploadFile()">Upload & Process</button>
+
+  <p id="status"></p>
+
+  <script>
+    async function getUploadUrl() {
+      const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRV26_s7Hhmks0YNFaDptdjo5z3i6rP6XZ1-VAG2rMydO9vpxdCllHJcB98mEPXIPstvwVOjWhJwzvG/pubhtml?gid=0&single=true";
+      const response = await fetch(csvUrl);
+      const text = await response.text();
+
+      const rows = text.split("\n");
+      return rows[1].replace(/"/g, "").trim();
+    }
+
+    async function uploadFile() {
+      const file = document.getElementById("fileInput").files[0];
+      const status = document.getElementById("status");
+
+      if (!file) {
+        status.innerText = "Please select a CSV file.";
+        return;
+      }
+
+      status.innerText = "Fetching upload key...";
+
+      const uploadUrl = await getUploadUrl();
+
+      status.innerText = "Uploading...";
+
+      try {
+        const response = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "text/csv"
+          },
+          body: file
+        });
+
+        status.innerText = response.ok
+          ? "Upload successful. Processing will start in next cron run."
+          : "Upload failed. Status: " + response.status;
+      } catch (err) {
+        status.innerText = "Upload failed: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
